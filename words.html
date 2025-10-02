@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Words Practice — Neon Read</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    a{
+        color: darkcyan;
+    }
+    /* اضافه‌های کوچک برای کنترل‌های جدید */
+    .small-input{padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:inherit}
+    .inline-row{display:flex;gap:10px;align-items:center;justify-content:center}
+    .translate-box{margin-top:12px;color:var(--muted)}
+    .tiny-muted{font-size:0.9rem;color:var(--muted)}
+    .controls-wrap{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;align-items:end}
+    @media (max-width:760px){
+      .controls-wrap{flex-direction:column;align-items:stretch}
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <h1>Words Practice</h1>
+      <p class="tag">Random word from the stories — speak to test your pronunciation</p>
+    </div>
+    <nav>
+      <a href="index.html" class="btn">Back to Stories</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="card" style="text-align:center;">
+      <div style="font-size:2.4rem;margin:12px 0;color:#eafff2" id="wordDisplay">—</div>
+      <div id="wordInfo" style="margin:12px 0;color:var(--muted)"></div>
+
+      <div style="margin-top:10px;" class="controls-wrap">
+        <div style="min-width:160px">
+          <label style="display:block;font-size:0.85rem;color:var(--muted);margin-bottom:6px">Choose level</label>
+          <select id="levelSelect" class="small-input" style="width:100%">
+            <option value="">All</option>
+          </select>
+        </div>
+
+        <div style="min-width:160px">
+          <label style="display:block;font-size:0.85rem;color:var(--muted);margin-bottom:6px">Target language code</label>
+          <input id="langInput" class="small-input" placeholder="e.g. fa, es, tr" value="fa" />
+        </div>
+
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center">
+          <button id="speakBtn" class="btn">🔊 Hear</button>
+          <button id="micBtn" class="btn">🎙️ Speak</button>
+          <button id="newBtn" class="btn">🔁 New Word</button>
+          <button id="detailsBtn" class="btn">ℹ️ Details</button>
+        </div>
+      </div>
+
+      <div id="translateResult" class="translate-box tiny-muted"></div>
+
+      <div id="result" style="margin-top:14px;color:var(--muted)"></div>
+
+      <p style="margin-top:18px;color:var(--muted);font-size:0.95rem">
+        Note: Speech recognition requires a secure origin (HTTPS or localhost) and modern browsers (Chrome, Edge). If the microphone doesn't work, check browser permissions.
+      </p>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>Practice regularly — speak slowly and clearly. The app does fuzzy matching for common small mistakes.</p>
+  </footer>
+
+  <script src="script.js"></script>
+  <script>
+    (function(){
+      const wordDisplay = document.getElementById('wordDisplay');
+      const wordInfo = document.getElementById('wordInfo');
+      const speakBtn = document.getElementById('speakBtn');
+      const micBtn = document.getElementById('micBtn');
+      const newBtn = document.getElementById('newBtn');
+      const result = document.getElementById('result');
+      const levelSelect = document.getElementById('levelSelect');
+      const langInput = document.getElementById('langInput');
+      const translateResult = document.getElementById('translateResult');
+      const detailsBtn = document.getElementById('detailsBtn');
+
+      // Stop-words (lowercase). این‌ها از انتخاب حذف می‌شن.
+      const STOPWORDS = new Set([
+        'a','an','the','and','or','but','if','then','else','for','to','of','in','on','at','by','with',
+        'is','are','was','were','be','been','being','it','its','he','she','they','we','you','i','me','my','your',
+        'this','that','these','those','as','from','into','about','over','after','before','up','down','out','so','too','very',
+        'can','could','would','should','may','might','will','shall','do','does','did','have','has','had'
+      ]);
+
+      // populate levels from DATA via getLevels()
+      if (typeof getLevels === 'function') {
+        const lvls = getLevels();
+        lvls.forEach(l=>{
+          const o = document.createElement('option'); o.value = l; o.textContent = l; levelSelect.appendChild(o);
+        });
+      }
+
+      function pickRandomWordFromData(chosenLevel=''){
+        // collectWords(minLen, level) comes from script.js
+        const list = (typeof collectWords === 'function') ? collectWords(3, chosenLevel) : [];
+        // normalize & dedupe
+        const cleaned = Array.from(new Set(list.map(w => w.trim()).filter(Boolean)));
+        // filter stopwords and non-alpha tokens
+        const filtered = cleaned.filter(w => {
+          const lw = w.toLowerCase();
+          if (STOPWORDS.has(lw)) return false;
+          // remove tokens with digits or too short
+          if (!/^[a-zA-Z']+$/.test(w)) return false;
+          if (w.length < 3) return false;
+          return true;
+        });
+        if (!filtered.length) return null;
+        return filtered[Math.floor(Math.random()*filtered.length)];
+      }
+
+      function setNewWord(){
+        const chosenLevel = levelSelect.value || '';
+        const w = pickRandomWordFromData(chosenLevel);
+        if (!w) {
+          wordDisplay.textContent = '—';
+          wordInfo.textContent = 'No suitable word found for the selected level.';
+          translateResult.innerHTML = '';
+          result.textContent = '';
+          window.__targetWord = '';
+          return;
+        }
+        window.__targetWord = w;
+        wordDisplay.textContent = w;
+        wordInfo.textContent = `Level: ${chosenLevel || 'All'} • Length: ${w.length} • Try to pronounce clearly`;
+        result.textContent = '';
+        // prepare the translation / external links (no API)
+        const lang = (langInput.value || 'fa').trim();
+        const gtLink = `https://translate.google.com/?sl=en&tl=${encodeURIComponent(lang)}&text=${encodeURIComponent(w)}&op=translate`;
+        const searchLink = `https://www.google.com/search?q=${encodeURIComponent(w + ' definition')}`;
+        translateResult.innerHTML = `
+          Translation: <a href="${gtLink}" target="_blank" rel="noopener noreferrer">Open Google Translate (en → ${escapeHtml(lang)})</a>
+          · Details: <a href="${searchLink}" target="_blank" rel="noopener noreferrer">Look up definition / examples</a>
+        `;
+      }
+      setNewWord();
+
+      newBtn.addEventListener('click', setNewWord);
+      levelSelect.addEventListener('change', setNewWord);
+      langInput.addEventListener('change', ()=>{
+        // update translate link for current word
+        const w = window.__targetWord || '';
+        if (!w) return;
+        const lang = (langInput.value || 'fa').trim();
+        const gtLink = `https://translate.google.com/?sl=en&tl=${encodeURIComponent(lang)}&text=${encodeURIComponent(w)}&op=translate`;
+        const searchLink = `https://www.google.com/search?q=${encodeURIComponent(w + ' definition')}`;
+        translateResult.innerHTML = `
+          Translation: <a href="${gtLink}" target="_blank" rel="noopener noreferrer">Open Google Translate (en → ${escapeHtml(lang)})</a>
+          · Details: <a href="${searchLink}" target="_blank" rel="noopener noreferrer">Look up definition / examples</a>
+        `;
+      });
+
+      // text-to-speech
+      speakBtn.addEventListener('click', ()=>{
+        const w = window.__targetWord || '';
+        if (!w) return;
+        const ut = new SpeechSynthesisUtterance(w);
+        ut.lang = 'en-US';
+        ut.rate = 0.95;
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(ut);
+      });
+
+      // speech recognition & fuzzy check
+      micBtn.addEventListener('click', ()=>{
+        result.textContent = 'Listening...';
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition){
+          result.textContent = 'SpeechRecognition not supported in this browser.';
+          return;
+        }
+        const rec = new SpeechRecognition();
+        rec.lang = 'en-US';
+        rec.interimResults = false;
+        rec.maxAlternatives = 3;
+        rec.start();
+
+        rec.onresult = (ev)=>{
+          const transcript = ev.results[0][0].transcript.trim();
+          const score = similarity(transcript.toLowerCase(), (window.__targetWord||'').toLowerCase());
+          let percent = Math.round(score*100);
+          const ok = score >= 0.7; // threshold
+          result.innerHTML = `Heard: <b>${escapeHtml(transcript)}</b> — similarity: ${percent}% — ${ok ? '<span style="color:#9ff7c6">Good</span>' : '<span style="color:#ffb2b2">Try again</span>'}`;
+        };
+        rec.onerror = (e)=>{
+          result.textContent = 'Recognition error: ' + (e.error || 'unknown');
+        };
+      });
+
+      // Details button: open external reputable lookup (new tab). No local definitions.
+      detailsBtn.addEventListener('click', ()=>{
+        const w = window.__targetWord || '';
+        if (!w) return;
+        // prefer dictionary search; fall back to generic search
+        const dictUrl = `https://www.google.com/search?q=${encodeURIComponent(w + ' definition')}`;
+        window.open(dictUrl, '_blank', 'noopener');
+      });
+
+      // simple Levenshtein-based similarity (same as before)
+      function similarity(a,b){
+        if (!a && !b) return 1;
+        if (!a || !b) return 0;
+        const dist = levenshtein(a,b);
+        const maxLen = Math.max(a.length, b.length);
+        return 1 - (dist / Math.max(1, maxLen));
+      }
+      function levenshtein(a,b){
+        const m = a.length, n = b.length;
+        const dp = Array.from({length:m+1}, ()=> new Array(n+1).fill(0));
+        for(let i=0;i<=m;i++) dp[i][0] = i;
+        for(let j=0;j<=n;j++) dp[0][j] = j;
+        for(let i=1;i<=m;i++){
+          for(let j=1;j<=n;j++){
+            const cost = a[i-1] === b[j-1] ? 0 : 1;
+            dp[i][j] = Math.min(dp[i-1][j] + 1, dp[i][j-1] + 1, dp[i-1][j-1] + cost);
+          }
+        }
+        return dp[m][n];
+      }
+
+      // small helper escape (same as in script.js)
+      function escapeHtml(str){
+        if (!str) return '';
+        return str.replace(/[&<>"']/g, (m)=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[m]);
+      }
+    })();
+  </script>
+</body>
+</html>

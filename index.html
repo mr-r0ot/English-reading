@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Neon Read — Active English Reading</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <h1>Neon Read</h1>
+      <p class="tag">Active reading for English learners — search, filter & practice</p>
+    </div>
+    <nav>
+      <a href="words.html" class="btn">Words Practice</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="controls card">
+      <div class="control-row">
+        <input id="searchInput" type="search" placeholder="Search title or inside stories..." />
+        <select id="levelFilter">
+          <option value="">All Levels</option>
+        </select>
+        <select id="genreFilter">
+          <option value="">All Genres</option>
+        </select>
+        <button id="clearBtn" class="btn small">Clear</button>
+      </div>
+    </section>
+
+    <section id="stories" class="stories-grid"></section>
+
+    <section id="empty" class="empty hidden">
+      <p>No stories found. Try different filters or search terms.</p>
+    </section>
+  </main>
+
+  <!-- Full-screen reader modal -->
+  <div id="modal" class="modal hidden" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-topbar">
+        <button id="backButton" class="btn small back">← Back</button>
+        <div class="modal-info">
+          <h2 id="modalTitle"></h2>
+          <div class="meta">
+            <span id="modalLevel" class="badge"></span>
+            <span id="modalGenre" class="badge"></span>
+          </div>
+        </div>
+        <div class="modal-controls">
+          <label class="font-label">Font size</label>
+          <input id="fontSizeRange" type="range" min="16" max="28" step="1" value="18" />
+          <button id="closeModal" class="close">✕</button>
+        </div>
+      </div>
+
+      <article id="modalText" class="story-full" tabindex="0"></article>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <p>Built with ❤️ for learners • Dark neon theme • Try the Words Practice page</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
